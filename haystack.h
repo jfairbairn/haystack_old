@@ -45,16 +45,18 @@ struct NeedleHeader
 	Key key;
 	unsigned char flags;
 	size_t size;
+	char content_type[64];
 
-	NeedleHeader(const Key k, const unsigned char f, const size_t sz) :
+	NeedleHeader(const Key k, const unsigned char f, const size_t sz, const char *_content_type) :
 	key(k), flags(f), size(sz)
 	{
-
+		memset(content_type, 0, 64);
+		strncpy(content_type, _content_type, 63);
 	}
 
 	NeedleHeader() : key(0, 0), flags(0), size(0)
 	{
-
+		memset(content_type, 0, 64);
 	}
 
 };
@@ -75,8 +77,20 @@ struct Haystack
 	~Haystack();
 
 	off_t OffsetOf(const Key &key);
-	int Write(const Key &key, const unsigned char flags, const size_t size, evbuffer *buf);
-	int Read(const Key &key, evbuffer *out);
+	
+	int Write(
+		const Key &key,
+		const unsigned char flags,
+		const size_t size,
+		const char *content_type,
+		evbuffer *buf
+	);
+
+	int Read(
+		const Key &key,
+		const char *&content_type,
+		evbuffer *out
+	);
 
 };
 

@@ -74,7 +74,7 @@ Haystack::~Haystack()
 	valid = false;
 }
 
-int Haystack::Write(const Key &key, unsigned char flags, size_t size, evbuffer *in)
+int Haystack::Write(const Key &key, unsigned char flags, size_t size, const char *content_type, evbuffer *in)
 {
 	off_t offset = lseek(fd, 0, SEEK_END);
 	if (offset == -1)
@@ -83,7 +83,7 @@ int Haystack::Write(const Key &key, unsigned char flags, size_t size, evbuffer *
 	}
 	
 	MagicHeader header;
-	NeedleHeader nh(key, flags, size);
+	NeedleHeader nh(key, flags, size, content_type);
 	header.magic = NEEDLE_MAGIC;
 	header.header = nh;
 
@@ -116,7 +116,7 @@ off_t Haystack::OffsetOf(const Key &key)
 	return offset;
 }
 
-int Haystack::Read(const Key &key, evbuffer *out)
+int Haystack::Read(const Key &key, const char *&content_type, evbuffer *out)
 {
 	off_t offset = OffsetOf(key);
 
@@ -126,7 +126,9 @@ int Haystack::Read(const Key &key, evbuffer *out)
 	ssize_t nread = readfull(fd, &header, sizeof(header));
 	if (header.magic != NEEDLE_MAGIC) return -4;
 	if (header.header.key != key) return -5;
-	if (evbuffer_add_file(out, dup(fd), offset+sizeof(header), header.header.size) == -1) return -6;
+	content_type = header.header.content_type;
+
+	if (out != NULL && evbuffer_add_file(out, dup(fd), offset+sizeof(header), header.header.size) == -1) return -6;
 
 	return header.header.size;
 }

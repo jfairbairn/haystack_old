@@ -41,6 +41,8 @@ void http_cb(struct evhttp_request *request, void *data)
 		return;
 	}
 	int ret;
+	const char *content_type;
+	bool headonly = false;
 
 
 	switch (evhttp_request_get_command(request))
@@ -48,7 +50,15 @@ void http_cb(struct evhttp_request *request, void *data)
 		case EVHTTP_REQ_POST:
 		case EVHTTP_REQ_PUT:
 
-			if (hs->Write(k, 0, evbuffer_get_length(input), input) < 0)
+			content_type = evhttp_find_header(
+				evhttp_request_get_input_headers(request), "Content-Type");
+
+			if (content_type == NULL)
+			{
+				content_type = "";
+			}
+
+			if (hs->Write(k, 0, evbuffer_get_length(input), content_type, input) < 0)
 			{
 				evhttp_send_error(request, HTTP_BADREQUEST, NULL);
 				fprintf(stderr, "%s\n", strerror(errno));
@@ -57,17 +67,40 @@ void http_cb(struct evhttp_request *request, void *data)
 			evhttp_send_error(request, HTTP_OK, NULL);
 			break;
 
+		case EVHTTP_REQ_HEAD:
+			headonly = true;
 		case EVHTTP_REQ_GET:
 
-			evhttp_add_header(evhttp_request_get_output_headers(request), "Content-Type", "image/jpeg");
 			if (hs->OffsetOf(k) == -1)
 			{
 				evhttp_send_error(request, HTTP_NOTFOUND, NULL);
 				break;
 			}
 
+			if (headonly)
+			{
+				ret = hs->Read(k, content_type, NULL);
+			}
+			else
+			{
+				ret = hs->Read(k, content_type, buf);
+			}
 
-			ret = hs->Read(k, buf);
+			if (strlen(content_type) > 0)
+			{
+				evhttp_add_header(
+					evhttp_request_get_output_headers(request),
+					"Content-Type", content_type
+				);
+			}
+			else
+			{
+				evhttp_add_header(
+					evhttp_request_get_output_headers(request),
+					"Content-Type", "application/octet-stream"
+				);
+			}
+
 			if (ret < 0)
 			{
 				evhttp_send_error(request, HTTP_INTERNAL, NULL);
@@ -132,15 +165,15 @@ int server(int argc, char * const *argv)
 	event_base *event_base = event_base_new();
 	evhttp *http_server = evhttp_new(event_base);
 
-	Haystack *h = new Haystack(path);
+	Haystack h(path);
 
 	if (evhttp_bind_socket(http_server, "0.0.0.0", portnum) == -1)
 	{
 		fprintf(stderr, "Bind fail\n");
 		exit(1);
 	}
-	evhttp_set_allowed_methods(http_server, EVHTTP_REQ_GET|EVHTTP_REQ_PUT|EVHTTP_REQ_POST);
-	evhttp_set_gencb(http_server, http_cb, h); // pass in god object here :)
+	evhttp_set_allowed_methods(http_server, EVHTTP_REQ_GET|EVHTTP_REQ_PUT|EVHTTP_REQ_POST|EVHTTP_REQ_HEAD);
+	evhttp_set_gencb(http_server, http_cb, &h);
 
 	event_base_dispatch(event_base);
 	evhttp_free(http_server);
