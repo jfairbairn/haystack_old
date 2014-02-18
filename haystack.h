@@ -23,13 +23,11 @@ struct Key
 
 	inline bool operator <(const Key &other) const
 	{
-		printf("key %llx_%x  < %llx_%x\n", pkey, skey, other.pkey, other.skey);
 		return pkey < other.pkey || (pkey == other.pkey && skey < other.skey);
 	}
 
 	inline bool operator ==(const Key &other) const
 	{
-		printf("key %llx_%x == %llx_%x\n", pkey, skey, other.pkey, other.skey);
 		return pkey == other.pkey && skey == other.skey;
 	}
 
