@@ -41,7 +41,7 @@ void Key::Parse(const char *path, Key &keyout, bool &valid)
 
 Haystack::Haystack(const char *path) : index(), valid(true)
 {
-	fd = open(path, O_CREAT|O_RDWR|O_APPEND, 0644);
+	fd = open(path, O_CREAT|O_RDWR, 0644);
 	if (fd == -1)
 	{
 		valid = false;
@@ -63,8 +63,7 @@ Haystack::Haystack(const char *path) : index(), valid(true)
 			return;
 		}
 		fprintf(stderr, "Read key %llx_%x: offset %lld into index\n", header.header.key.pkey, header.header.key.skey, offset);
-		index.erase(header.header.key);
-		index.insert(std::pair<Key, off_t>(header.header.key, offset));
+		index[header.header.key] = offset;
 	}
 
 }
@@ -103,8 +102,7 @@ int Haystack::Write(const Key &key, unsigned char flags, size_t size, const char
 	if (fsync(fd) == -1) return -1;
 
 
-	index.erase(nh.key);
-	index.insert(std::pair<Key, off_t>(nh.key, offset));
+	index[nh.key] = offset;
 
 	fprintf(stderr, "Key %llx_%x: offset %lld\n", nh.key.pkey, nh.key.skey, offset);
 
