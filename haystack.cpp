@@ -50,7 +50,7 @@ Haystack::Haystack(const char *path) : index(), valid(true)
 	MagicHeader header;
 
 	// scan haystack file; read headers and populate index
-	for (off_t offset = 0; offset != -1; offset += lseek(fd, header.header.size, SEEK_CUR))
+	for (off_t offset = 0; offset != -1; offset = lseek(fd, header.header.size, SEEK_CUR))
 	{
 		size_t nread = readfull(fd, &header, sizeof(header));
 		if (nread == -1 || header.magic != NEEDLE_MAGIC)
