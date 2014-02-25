@@ -1,13 +1,19 @@
 CFLAGS = -O0 -g -fno-limit-debug-info
 CXXFLAGS = $(CFLAGS) -std=c++11
-LDFLAGS = -levent -lc++
+LDFLAGS = -lc++ -levent -lprotobuf
 
-OBJECTS = haystack.o main.o
+PB_GENERATED_SOURCES = haystack.pb.h haystack.pb.cc
+OBJECTS = haystack.pb.o haystack.o main.o
 EXE = haystack
 
-$(EXE):	$(OBJECTS)
+$(EXE): $(OBJECTS)
 
-depend: 
+depend:
+
+$(OBJECTS):	$(PB_GENERATED_SOURCES)
+
+$(PB_GENERATED_SOURCES):	haystack.proto
+	protoc --cpp_out=. haystack.proto
 
 clean:
-	rm -f $(OBJECTS) $(EXE)
+	rm -f $(PB_GENERATED_SOURCES) $(OBJECTS) $(EXE)

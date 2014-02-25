@@ -1,4 +1,5 @@
 #include <event2/buffer.h>
+#include "haystack.pb.h"
 #import <map>
 
 #define NEEDLE_MAGIC 0xd00fface
@@ -12,6 +13,12 @@ struct Key
 	pkey(p), skey(s)
 	{
 
+	}
+
+	Key(const haystack::pb::Key &pbk) :
+	pkey(pbk.pkey()), skey(pbk.skey())
+	{
+		
 	}
 
 	Key()
@@ -52,6 +59,12 @@ struct NeedleHeader
 		strncpy(content_type, _content_type, 63);
 	}
 
+	NeedleHeader(const haystack::pb::NeedleHeader &pbnh)
+	{
+		Key k(pbnh.key());
+		NeedleHeader(k, (unsigned char) pbnh.flags(), pbnh.size(), pbnh.content_type().c_str());
+	}
+
 	NeedleHeader() : key(0, 0), flags(0), size(0)
 	{
 		memset(content_type, 0, 64);
@@ -63,6 +76,18 @@ struct MagicHeader
 {
 	uint32_t magic;
 	NeedleHeader header;
+
+	MagicHeader(const haystack::pb::MagicHeader &pbmh) :
+	magic(pbmh.magic()), header(pbmh.header())
+	{
+
+	}
+
+	MagicHeader() :
+	magic(NEEDLE_MAGIC)
+	{
+
+	}
 };
 
 struct Haystack

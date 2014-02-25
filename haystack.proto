@@ -1,0 +1,19 @@
+package haystack.pb;
+
+message Key {
+	required uint64 pkey = 1;
+	required uint32 skey = 2;
+}
+
+message NeedleHeader {
+	required Key key = 1;
+	optional uint32 flags = 2 [default = 0];
+	required uint64 size = 3;
+	optional string content_type = 4;
+	optional uint64 last_modified = 5;
+}
+
+message MagicHeader {
+	required uint32 magic = 1;
+	required NeedleHeader header = 2;
+}
