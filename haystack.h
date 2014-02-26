@@ -7,8 +7,6 @@
 
 #define NEEDLE_MAGIC 0xd00fface
 
-using namespace google::protobuf::io;
-
 template <class T> class PB
 {
 protected:

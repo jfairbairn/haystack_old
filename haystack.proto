@@ -1,8 +1,8 @@
 package haystack.pb;
 
 message Key {
-	required uint64 pkey = 1;
-	required uint32 skey = 2;
+	required fixed64 pkey = 1;
+	required fixed32 skey = 2;
 }
 
 message NeedleHeader {
