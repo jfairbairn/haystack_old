@@ -3,7 +3,7 @@ CXXFLAGS = $(CFLAGS) -std=c++11
 LDFLAGS = -lc++ -levent -lprotobuf
 
 PB_GENERATED_SOURCES = haystack.pb.h haystack.pb.cc
-OBJECTS = haystack.pb.o haystack.o main.o
+OBJECTS = timeutil.o haystack.pb.o haystack.o main.o
 EXE = haystack
 
 $(EXE): $(OBJECTS)
