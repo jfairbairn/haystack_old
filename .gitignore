@@ -1,3 +1,5 @@
 haystack
 hstest
 *.o
+*.pb.cc
+*.pb.h
