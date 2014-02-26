@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include "haystack.h"
+#include "timeutil.h"
 
 void http_cb(struct evhttp_request *request, void *data)
 {
@@ -43,8 +44,12 @@ void http_cb(struct evhttp_request *request, void *data)
 	int ret;
 	const char *content_type;
 	char content_type_out[64];
-	bool headonly = false;
 
+	bool headonly = false;
+	evkeyvalq *output_headers = evhttp_request_get_output_headers(request);
+	time_t last_modified;
+	char last_modified_buf[64];
+	memset(last_modified_buf, 0, 64);
 
 	switch (evhttp_request_get_command(request))
 	{	
@@ -59,7 +64,7 @@ void http_cb(struct evhttp_request *request, void *data)
 				content_type = "";
 			}
 
-			if (hs->Write(k, 0, evbuffer_get_length(input), content_type, input) < 0)
+			if (hs->Write(k, 0, evbuffer_get_length(input), content_type, now(), input) < 0)
 			{
 				evhttp_send_error(request, HTTP_BADREQUEST, NULL);
 				fprintf(stderr, "%s\n", strerror(errno));
@@ -80,27 +85,29 @@ void http_cb(struct evhttp_request *request, void *data)
 
 			if (headonly)
 			{
-				ret = hs->Read(k, content_type_out, NULL);
+				ret = hs->Read(k, content_type_out, last_modified, NULL);
 			}
 			else
 			{
-				ret = hs->Read(k, content_type_out, buf);
+				ret = hs->Read(k, content_type_out, last_modified, buf);
 			}
 
 			if (strlen(content_type_out) > 0)
 			{
 				evhttp_add_header(
-					evhttp_request_get_output_headers(request),
+					output_headers,
 					"Content-Type", content_type_out
 				);
 			}
 			else
 			{
 				evhttp_add_header(
-					evhttp_request_get_output_headers(request),
+					output_headers,
 					"Content-Type", "application/octet-stream"
 				);
 			}
+			seconds_to_rfc822(last_modified, last_modified_buf, 63);
+			evhttp_add_header(output_headers, "Last-Modified", last_modified_buf);
 
 			if (ret < 0)
 			{

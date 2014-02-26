@@ -1,4 +1,4 @@
-CFLAGS = -O0 -g -fno-limit-debug-info
+CFLAGS = -O2 -g -fno-limit-debug-info
 CXXFLAGS = $(CFLAGS) -std=c++11
 LDFLAGS = -lc++ -levent -lprotobuf
 

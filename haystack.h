@@ -106,20 +106,16 @@ struct NeedleHeader : public PB<haystack::pb::NeedleHeader>
 	unsigned char flags;
 	size_t size;
 	char content_type[64];
+	time_t last_modified;
 
-	NeedleHeader(const Key k, const unsigned char f, const size_t sz, const char *_content_type) :
-	key(k), flags(f), size(sz)
+	NeedleHeader(const Key k, const unsigned char f, const size_t sz, const char *_content_type, const time_t _last_modified) :
+	key(k), flags(f), size(sz), last_modified(_last_modified)
 	{
 		memset(content_type, 0, 64);
 		strncpy(content_type, _content_type, 63);
 	}
 
-	NeedleHeader(const int fd)
-	{
-
-	}
-
-	NeedleHeader() : key(0, 0), flags(0), size(0)
+	NeedleHeader() : key(0, 0), flags(0), size(0), last_modified(0)
 	{
 		memset(content_type, 0, 64);
 	}
@@ -129,6 +125,7 @@ struct NeedleHeader : public PB<haystack::pb::NeedleHeader>
 		key.Init(pbnh.key());
 		flags = pbnh.flags();
 		size = pbnh.size();
+		last_modified = pbnh.last_modified();
 		memset(content_type, 0, 64);
 		strncpy(content_type, pbnh.content_type().c_str(), 63);
 	}
@@ -141,6 +138,7 @@ struct NeedleHeader : public PB<haystack::pb::NeedleHeader>
 		pbnh.set_flags(flags);
 		pbnh.set_size(size);
 		pbnh.set_content_type(content_type, strlen(content_type));
+		pbnh.set_last_modified(last_modified);
 	}
 };
 
@@ -189,12 +187,14 @@ struct Haystack
 		const unsigned char flags,
 		const size_t size,
 		const char *content_type,
+		const time_t last_modified,
 		evbuffer *buf
 	);
 
 	int Read(
 		const Key &key,
 		char *content_type,
+		time_t &last_modified,
 		evbuffer *out
 	);
 
