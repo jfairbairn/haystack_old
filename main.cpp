@@ -42,6 +42,7 @@ void http_cb(struct evhttp_request *request, void *data)
 	}
 	int ret;
 	const char *content_type;
+	char content_type_out[64];
 	bool headonly = false;
 
 
@@ -79,18 +80,18 @@ void http_cb(struct evhttp_request *request, void *data)
 
 			if (headonly)
 			{
-				ret = hs->Read(k, content_type, NULL);
+				ret = hs->Read(k, content_type_out, NULL);
 			}
 			else
 			{
-				ret = hs->Read(k, content_type, buf);
+				ret = hs->Read(k, content_type_out, buf);
 			}
 
-			if (strlen(content_type) > 0)
+			if (strlen(content_type_out) > 0)
 			{
 				evhttp_add_header(
 					evhttp_request_get_output_headers(request),
-					"Content-Type", content_type
+					"Content-Type", content_type_out
 				);
 			}
 			else
