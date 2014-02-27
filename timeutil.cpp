@@ -7,7 +7,8 @@
 #define RFC822_FORMAT_OUT "%a, %d %b %Y %T GMT"
 time_t rfc822_to_seconds(const char *rfc822)
 {
-	struct tm tm;
+	if (rfc822 == NULL) return 0;
+	tm tm;
 	strptime(rfc822, RFC822_FORMAT, &tm);
 	return mktime(&tm);
 }

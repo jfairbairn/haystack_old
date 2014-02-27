@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <stdlib.h>
+#include <event2/http.h>
 
 #include "haystack.h"
 
@@ -38,6 +39,11 @@ void Key::Parse(const char *path, Key &keyout, bool &valid)
 	valid = true;
 }
 
+bool NeedleHeader::ModifiedSince(const time_t t)
+{
+	return false;
+}
+
 Haystack::Haystack(const char *path) : index(), valid(true)
 {
 	fd = open(path, O_CREAT|O_RDWR|O_APPEND, 0644);
@@ -49,7 +55,7 @@ Haystack::Haystack(const char *path) : index(), valid(true)
 	MagicHeader header;
 	int extra = 0;
 	// scan haystack file; read headers and populate index
-	for (off_t offset = 0; offset != -1; offset = lseek(fd, offset + header.header.size + header.cached_size, SEEK_SET))
+	for (off_t offset = 0; offset != -1; offset = lseek(fd, offset + header.header.size + header.magic_header_size, SEEK_SET))
 	{
 		if ((! header.Parse(fd)) || header.magic != NEEDLE_MAGIC)
 		{
@@ -101,7 +107,7 @@ int Haystack::Write(const Key &key, unsigned char flags, size_t size, const char
 	return 0;
 }
 
-off_t Haystack::OffsetOf(const Key &key)
+off_t Haystack::OffsetOf(const Key &key) const
 {
 	auto iter = index.find(key);
 	if (iter == index.end()) return -1;
@@ -109,20 +115,18 @@ off_t Haystack::OffsetOf(const Key &key)
 	return offset;
 }
 
-int Haystack::Read(const Key &key, char *content_type, time_t &last_modified, evbuffer *out)
+NeedleStatus Haystack::FindNeedle(const Key &key, NeedleData &out) const
 {
 	off_t offset = OffsetOf(key);
-
-	if (lseek(fd, offset, SEEK_SET) == -1) return -2;
-
+	if (lseek(fd, offset, SEEK_SET) == -1) return NOT_FOUND;
 	MagicHeader header;
-	if ((! header.Parse(fd)) || header.magic != NEEDLE_MAGIC) return -4;
+	if ((! header.Parse(fd)) || header.magic != NEEDLE_MAGIC) return ERROR;
+	out.Init(header.header, offset + header.magic_header_size);
+	return FOUND;
+}
 
-	strncpy(content_type, header.header.content_type, 64);
-	last_modified = header.header.last_modified;
-	if (header.header.key != key) return -5;
-
-	if (out != NULL && evbuffer_add_file(out, dup(fd), offset + header.cached_size, header.header.size) == -1) return -6;
-
-	return header.header.size;
+int Haystack::Read(const NeedleData &needle, evbuffer *out) const
+{
+	if (out != NULL && evbuffer_add_file(out, dup(fd), needle.offset, needle.header.size) == -1) return -1;
+	return needle.header.size;
 }

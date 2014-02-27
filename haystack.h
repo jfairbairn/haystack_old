@@ -120,6 +120,15 @@ struct NeedleHeader : public PB<haystack::pb::NeedleHeader>
 		memset(content_type, 0, 64);
 	}
 
+	void Init(const NeedleHeader &nh)
+	{
+		key = nh.key;
+		flags = nh.flags;
+		size = nh.size;
+		memcpy(content_type, nh.content_type, sizeof(content_type));
+		last_modified = nh.last_modified;
+	}
+
 	void Init(const haystack::pb::NeedleHeader &pbnh)
 	{
 		key.Init(pbnh.key());
@@ -140,16 +149,42 @@ struct NeedleHeader : public PB<haystack::pb::NeedleHeader>
 		pbnh.set_content_type(content_type, strlen(content_type));
 		pbnh.set_last_modified(last_modified);
 	}
+
+	bool ModifiedSince(const time_t t);
+};
+
+enum NeedleStatus
+{
+	FOUND,
+	NOT_FOUND,
+	ERROR
+};
+
+struct NeedleData
+{
+	NeedleHeader header;
+	off_t offset;
+
+	NeedleData()
+	{
+		memset(this, 0, sizeof(NeedleData));
+	}
+
+	void Init(const NeedleHeader &needle_header, const off_t _offset)
+	{
+		header = needle_header;
+		offset = _offset;
+	}
 };
 
 struct MagicHeader : public PB<haystack::pb::MagicHeader>
 {
 	uint32_t magic;
 	NeedleHeader header;
-	int cached_size;
+	int magic_header_size;
 
 	MagicHeader() :
-	magic(NEEDLE_MAGIC), cached_size(0)
+	magic(NEEDLE_MAGIC)
 	{
 
 	}
@@ -158,7 +193,7 @@ struct MagicHeader : public PB<haystack::pb::MagicHeader>
 	{
 		magic = pbmh.magic();
 		header.Init(pbmh.header());
-		cached_size = pbmh.ByteSize();
+		magic_header_size = pbmh.ByteSize();
 	}
 
 	void ToPB(haystack::pb::MagicHeader &pbmh) const
@@ -180,7 +215,9 @@ struct Haystack
 	Haystack(const char *path);
 	~Haystack();
 
-	off_t OffsetOf(const Key &key);
+	off_t OffsetOf(const Key &key) const;
+
+	NeedleStatus FindNeedle(const Key &key, NeedleData &out) const;
 	
 	int Write(
 		const Key &key,
@@ -191,12 +228,7 @@ struct Haystack
 		evbuffer *buf
 	);
 
-	int Read(
-		const Key &key,
-		char *content_type,
-		time_t &last_modified,
-		evbuffer *out
-	);
+	int Read(const NeedleData &needle, evbuffer *out) const;
 
 };
 

@@ -12,6 +12,66 @@
 #include "haystack.h"
 #include "timeutil.h"
 
+void handle_get(const Key &k, const Haystack &hs, const bool headonly, evhttp_request *request)
+{
+	evbuffer *buf = evbuffer_new();
+	evkeyvalq *output_headers = evhttp_request_get_output_headers(request);
+	char last_modified[64];
+	memset(last_modified, 0, 64);
+	NeedleData needle;
+	int needle_status;
+
+	needle_status = hs.FindNeedle(k, needle);
+	if (needle_status == NOT_FOUND)
+	{
+		evhttp_send_error(request, HTTP_NOTFOUND, NULL);
+		evbuffer_free(buf);
+		return;
+	}
+	if (needle_status == ERROR)
+	{
+		evhttp_send_error(request, HTTP_INTERNAL, NULL);
+		evbuffer_free(buf);
+		return;
+	}
+	const NeedleHeader &header = needle.header;
+
+	int if_modified_since = rfc822_to_seconds(
+		evhttp_find_header(
+			evhttp_request_get_input_headers(request), "If-Modified-Since"
+		)
+	);
+
+	evhttp_add_header(output_headers, "Content-Type",
+		strlen(header.content_type) > 0 ? header.content_type : "application/octet-stream"
+	);
+
+	seconds_to_rfc822(header.last_modified, last_modified, 63);
+	evhttp_add_header(output_headers, "Last-Modified", last_modified);
+	evhttp_add_header(output_headers, "Cache-Control", "public, max-age=86400");
+
+	if (header.last_modified <= if_modified_since)
+	{
+		evhttp_send_error(request, HTTP_NOTMODIFIED, NULL);
+		evbuffer_free(buf);
+		return;
+	}
+
+	if (hs.Read(needle, headonly ? NULL : buf) < 0)
+	{
+		evhttp_send_error(request, HTTP_INTERNAL, NULL);
+		fprintf(stderr, "%s\n", strerror(errno));
+		evbuffer_free(buf);
+		return;
+	}
+	evhttp_send_reply(request, HTTP_OK, "OK", buf);
+}
+
+void handle_post()
+{
+
+}
+
 void http_cb(struct evhttp_request *request, void *data)
 {
 	Haystack *hs = (Haystack *) data;
@@ -24,7 +84,6 @@ void http_cb(struct evhttp_request *request, void *data)
 	Key k;
 	bool valid;
 
-	evbuffer *buf = evbuffer_new();
 	evbuffer *input = evhttp_request_get_input_buffer(request);
 
 	if (strlen(path) < 2 || strchr(realpath, '/') != NULL)
@@ -43,13 +102,8 @@ void http_cb(struct evhttp_request *request, void *data)
 	}
 	int ret;
 	const char *content_type;
-	char content_type_out[64];
 
 	bool headonly = false;
-	evkeyvalq *output_headers = evhttp_request_get_output_headers(request);
-	time_t last_modified;
-	char last_modified_buf[64];
-	memset(last_modified_buf, 0, 64);
 
 	switch (evhttp_request_get_command(request))
 	{	
@@ -76,47 +130,7 @@ void http_cb(struct evhttp_request *request, void *data)
 		case EVHTTP_REQ_HEAD:
 			headonly = true;
 		case EVHTTP_REQ_GET:
-
-			if (hs->OffsetOf(k) == -1)
-			{
-				evhttp_send_error(request, HTTP_NOTFOUND, NULL);
-				break;
-			}
-
-			if (headonly)
-			{
-				ret = hs->Read(k, content_type_out, last_modified, NULL);
-			}
-			else
-			{
-				ret = hs->Read(k, content_type_out, last_modified, buf);
-			}
-
-			if (strlen(content_type_out) > 0)
-			{
-				evhttp_add_header(
-					output_headers,
-					"Content-Type", content_type_out
-				);
-			}
-			else
-			{
-				evhttp_add_header(
-					output_headers,
-					"Content-Type", "application/octet-stream"
-				);
-			}
-			seconds_to_rfc822(last_modified, last_modified_buf, 63);
-			evhttp_add_header(output_headers, "Last-Modified", last_modified_buf);
-
-			if (ret < 0)
-			{
-				evhttp_send_error(request, HTTP_INTERNAL, NULL);
-				fprintf(stderr, "%s\n", strerror(errno));
-				evbuffer_free(buf);
-				break;
-			}
-			evhttp_send_reply(request, HTTP_OK, "OK", buf);
+			handle_get(k, *hs, headonly, request);
 			break;
 
 		default:
