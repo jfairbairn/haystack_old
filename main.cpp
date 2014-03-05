@@ -137,7 +137,6 @@ void http_cb(struct evhttp_request *request, void *data)
 		// shouldn't get here -- allowed request types are set elsewhere
 		// (see calls to evhttp_set_allowed_methods())
 			evhttp_send_error(request, HTTP_BADMETHOD, NULL);
-			break;	
 
 	}
 
