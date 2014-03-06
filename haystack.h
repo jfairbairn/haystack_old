@@ -1,11 +1,13 @@
 #include <event2/buffer.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
-#import <map>
+#import <sparsehash/sparse_hash_map>
 
 #include "haystack.pb.h"
 
 #define NEEDLE_MAGIC 0xd00fface
+
+using google::sparse_hash_map;
 
 template <class T> class PB
 {
@@ -206,10 +208,18 @@ struct MagicHeader : public PB<haystack::pb::MagicHeader>
 
 };
 
+struct KeyHash
+{
+	size_t operator()(const Key & key) const
+	{
+		return key.pkey;
+	}
+};
+
 struct Haystack
 {
 	int fd;
-	std::map<Key, off_t> index;
+	sparse_hash_map<Key, off_t, KeyHash> index;
 	bool valid;
 
 	Haystack(const char *path);
@@ -218,7 +228,7 @@ struct Haystack
 	off_t OffsetOf(const Key &key) const;
 
 	NeedleStatus FindNeedle(const Key &key, NeedleData &out) const;
-	
+
 	int Write(
 		const Key &key,
 		const unsigned char flags,
@@ -231,4 +241,3 @@ struct Haystack
 	int Read(const NeedleData &needle, evbuffer *out) const;
 
 };
-
