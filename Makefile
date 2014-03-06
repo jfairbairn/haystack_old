@@ -8,8 +8,6 @@ EXE = haystack
 
 $(EXE): $(OBJECTS)
 
-depend:
-
 $(OBJECTS):	$(PB_GENERATED_SOURCES)
 
 $(PB_GENERATED_SOURCES):	haystack.proto
