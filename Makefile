@@ -15,3 +15,13 @@ $(PB_GENERATED_SOURCES):	haystack.proto
 
 clean:
 	rm -f $(PB_GENERATED_SOURCES) $(OBJECTS) $(EXE)
+
+depend:
+	makedepend -Y. -s"# MAKEDEPEND OUTPUT FOLLOWS" *.cpp
+
+#
+# MAKEDEPEND OUTPUT FOLLOWS
+
+haystack.o: haystack.h
+main.o: haystack.h timeutil.h
+timeutil.o: timeutil.h
