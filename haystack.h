@@ -1,7 +1,7 @@
 #include <event2/buffer.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
-#import <sparsehash/sparse_hash_map>
+#include <sparsehash/sparse_hash_map>
 
 #include "haystack.pb.h"
 
