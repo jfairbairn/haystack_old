@@ -1,9 +1,6 @@
 #include <event2/buffer.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include <sparsehash/sparse_hash_map>
-
-#include "haystack.pb.h"
 
 #define NEEDLE_MAGIC 0xd00fface
 

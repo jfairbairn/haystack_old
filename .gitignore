@@ -3,3 +3,4 @@ hstest
 *.o
 *.pb.cc
 *.pb.h
+hs_spec.hs
