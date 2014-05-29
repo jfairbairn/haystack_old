@@ -4,3 +4,5 @@ hstest
 *.pb.cc
 *.pb.h
 hs_spec.hs
+
+Makefile.bak
