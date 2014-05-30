@@ -53,9 +53,10 @@ Haystack::Haystack(const char *path) : index(), valid(true)
 		return;
 	}
 	MagicHeader header;
-	int extra = 0;
+	memset(&header, 0, sizeof(header));
+
 	// scan haystack file; read headers and populate index
-	for (off_t offset = 0; offset != -1; offset = lseek(fd, offset + header.header.size + header.magic_header_size, SEEK_SET))
+	for (off_t offset = 0; offset != -1; offset = lseek(fd, offset + header.header.size + sizeof(header), SEEK_SET))
 	{
 		if ((! header.Parse(fd)) || header.magic != NEEDLE_MAGIC)
 		{
@@ -63,7 +64,8 @@ Haystack::Haystack(const char *path) : index(), valid(true)
 			valid = false;
 			return;
 		}
-		fprintf(stderr, "Read key %llx_%x: offset %lld into index\n", header.header.key.pkey, header.header.key.skey, offset);
+		fprintf(stderr, "magic_header_size %d\n", sizeof(header));
+		fprintf(stderr, "Read key %lx_%x size %ld: offset %ld into index\n", header.header.key.pkey, header.header.key.skey, header.header.size, offset);
 		index[header.header.key] = offset;
 	}
 
@@ -102,7 +104,7 @@ int Haystack::Write(const Key &key, unsigned char flags, size_t size, const char
 
 	index[nh.key] = offset;
 
-	fprintf(stderr, "Key %llx_%x: offset %lld\n", nh.key.pkey, nh.key.skey, offset);
+	fprintf(stderr, "Key %lx_%x: offset %ld\n", nh.key.pkey, nh.key.skey, offset);
 
 	return 0;
 }
@@ -121,7 +123,9 @@ NeedleStatus Haystack::FindNeedle(const Key &key, NeedleData &out) const
 	if (lseek(fd, offset, SEEK_SET) == -1) return NOT_FOUND;
 	MagicHeader header;
 	if ((! header.Parse(fd)) || header.magic != NEEDLE_MAGIC) return ERROR;
-	out.Init(header.header, offset + header.magic_header_size);
+	fprintf(stderr, "Found key %lx_%x size %ld ct %s: offset %ld, data starts at %ld\n", key.pkey, key.skey, header.header.size, header.header.content_type, offset, offset + sizeof(header));
+
+	out.Init(header.header, offset + sizeof(header));
 	return FOUND;
 }
 

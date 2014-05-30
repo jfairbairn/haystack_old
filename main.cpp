@@ -50,12 +50,12 @@ void handle_get(const Key &k, const Haystack &hs, const bool headonly, evhttp_re
 	evhttp_add_header(output_headers, "Last-Modified", last_modified);
 	evhttp_add_header(output_headers, "Cache-Control", "public, max-age=86400");
 
-	if (header.last_modified <= if_modified_since)
-	{
-		evhttp_send_error(request, HTTP_NOTMODIFIED, NULL);
-		evbuffer_free(buf);
-		return;
-	}
+	// if (header.last_modified <= if_modified_since)
+	// {
+	// 	evhttp_send_error(request, HTTP_NOTMODIFIED, NULL);
+	// 	evbuffer_free(buf);
+	// 	return;
+	// }
 
 	if (hs.Read(needle, headonly ? NULL : buf) < 0)
 	{

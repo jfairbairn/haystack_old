@@ -6,48 +6,60 @@
 
 using google::sparse_hash_map;
 
-template <class T> class PB
+template <class T> int readfull(int fd, T *t)
+{
+	void *buf = (void *)t;
+
+	for (size_t remaining = sizeof(T); remaining > 0;)
+	{
+		int nread = read(fd, buf, remaining);
+		if (nread <= 0)
+		{
+			return nread;
+		}
+		remaining -= nread;
+	}
+	return sizeof(T);
+}
+
+template <class T> int writefull(int fd, T *t)
+{
+	void *buf = (void *)t;
+	for (size_t remaining = sizeof(T); remaining > 0;)
+	{
+		int nwritten = write(fd, buf, remaining);
+		if (nwritten <= 0)
+		{
+			return nwritten;
+		}
+		remaining -= nwritten;
+	}
+	return sizeof(T);
+}
+
+template <class T> class Serializable
 {
 protected:
-	virtual void Init(const T &t) = 0;
-	virtual void ToPB(T &t) const = 0;
 
 public:
-	virtual ~PB()
+	virtual ~Serializable()
 	{
 
 	}
 
 	const bool Parse(const int fd)
 	{
-		T t;
-
-		t.ParseFromFileDescriptor(fd);
-		if (! t.IsInitialized())
-		{
-			fprintf(stderr, "parse fail: Missing fields: %s\n---\n", t.InitializationErrorString().c_str());
-			return false;
-		}
-
-		Init(t);
-		return true;
+		return readfull(fd, this) > 0;
 	}
 
 	const bool Serialize(const int fd)
 	{
-		T t;
-		ToPB(t);
-		if (! t.IsInitialized())
-		{
-			fprintf(stderr, "Missing fields: %s\n", t.InitializationErrorString().c_str());
-			return false;
-		}
-		return t.SerializeToFileDescriptor(fd);
+		return writefull(fd, (T*)this) > 0;
 	}
 
 };
 
-struct Key : public PB<haystack::pb::Key>
+struct Key : public Serializable<Key>
 {
 	uint64_t pkey;
 	uint32_t skey;
@@ -56,11 +68,6 @@ struct Key : public PB<haystack::pb::Key>
 	pkey(p), skey(s)
 	{
 
-	}
-
-	Key(const haystack::pb::Key &pbk)
-	{
-		Init(pbk);
 	}
 
 	Key()
@@ -85,21 +92,18 @@ struct Key : public PB<haystack::pb::Key>
 		return !(*this==other);
 	}
 
-	void Init(const haystack::pb::Key &pbk)
+	void Init(const Key &key)
 	{
-		pkey = pbk.pkey();
-		skey = pbk.skey();
+
 	}
 
-	void ToPB(haystack::pb::Key &pbk) const
+	void ToPB(Key &key) const
 	{
-		pbk.set_pkey(pkey);
-		pbk.set_skey(skey);
-	}
 
+	}
 };
 
-struct NeedleHeader : public PB<haystack::pb::NeedleHeader>
+struct NeedleHeader : public Serializable<NeedleHeader>
 {
 	Key key;
 	unsigned char flags;
@@ -128,28 +132,13 @@ struct NeedleHeader : public PB<haystack::pb::NeedleHeader>
 		last_modified = nh.last_modified;
 	}
 
-	void Init(const haystack::pb::NeedleHeader &pbnh)
-	{
-		key.Init(pbnh.key());
-		flags = pbnh.flags();
-		size = pbnh.size();
-		last_modified = pbnh.last_modified();
-		memset(content_type, 0, 64);
-		strncpy(content_type, pbnh.content_type().c_str(), 63);
-	}
-
-	void ToPB(haystack::pb::NeedleHeader &pbnh) const
-	{
-		haystack::pb::Key *pbk = new haystack::pb::Key();
-		key.ToPB(*pbk);
-		pbnh.set_allocated_key(pbk);
-		pbnh.set_flags(flags);
-		pbnh.set_size(size);
-		pbnh.set_content_type(content_type, strlen(content_type));
-		pbnh.set_last_modified(last_modified);
-	}
-
 	bool ModifiedSince(const time_t t);
+
+	void ToPB(NeedleHeader &nh) const
+	{
+
+	}
+
 };
 
 enum NeedleStatus
@@ -176,11 +165,10 @@ struct NeedleData
 	}
 };
 
-struct MagicHeader : public PB<haystack::pb::MagicHeader>
+struct MagicHeader : public Serializable<MagicHeader>
 {
 	uint32_t magic;
 	NeedleHeader header;
-	int magic_header_size;
 
 	MagicHeader() :
 	magic(NEEDLE_MAGIC)
@@ -188,19 +176,14 @@ struct MagicHeader : public PB<haystack::pb::MagicHeader>
 
 	}
 
-	void Init(const haystack::pb::MagicHeader &pbmh)
+	virtual void Init(const MagicHeader &mh)
 	{
-		magic = pbmh.magic();
-		header.Init(pbmh.header());
-		magic_header_size = pbmh.ByteSize();
+
 	}
 
-	void ToPB(haystack::pb::MagicHeader &pbmh) const
+	virtual void ToPB(MagicHeader &mh) const
 	{
-		pbmh.set_magic(magic);
-		haystack::pb::NeedleHeader *pbnh = new haystack::pb::NeedleHeader();
-		header.ToPB(*pbnh);
-		pbmh.set_allocated_header(pbnh);
+
 	}
 
 };
