@@ -5,3 +5,4 @@ hstest
 *.pb.h
 hs_spec.hs
 Makefile.bak
+
